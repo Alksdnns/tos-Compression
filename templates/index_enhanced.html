@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOS: Optimized Storage Pipeline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background:
+                linear-gradient(180deg, #f7fbff 0%, #f5f7fb 42%, #f8fafc 100%);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .byte {
+            display: inline-flex;
+            width: 2rem;
+            height: 1.75rem;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .changed-before { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+        .changed-after { background: #ecfdf5; color: #047857; border-color: #a7f3d0; font-weight: 700; }
+        .metric { border-radius: 8px; border: 1px solid #dbe4ef; background: #ffffff; }
+        .badge-pro { display: inline-block; background: #dbeafe; color: #1e3a8a; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-left: 8px; }
+        .paper-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+        }
+        .flow-node {
+            width: min(100%, 720px);
+            margin-inline: auto;
+            border: 1px solid #b7c8dc;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #ffffff 0%, #eef6ff 100%);
+        }
+        .stage-node {
+            width: min(100%, 720px);
+            margin-inline: auto;
+            border: 1px solid #9fb8d4;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .stage-header {
+            border-bottom: 1px solid #d7e3f0;
+            background: linear-gradient(90deg, #eaf4ff 0%, #f8fbff 100%);
+        }
+        .component {
+            border: 1px solid #d7e3f0;
+            border-radius: 6px;
+            background: #ffffff;
+            min-height: 52px;
+        }
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 34px;
+            color: #2563eb;
+            font-size: 1.35rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-950">
+    <main class="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6">
+        <header class="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p class="text-sm font-semibold uppercase text-blue-800">TOS <span class="badge-pro">RESEARCH ARCHIVE</span></p>
+                <h1 class="mt-1 text-3xl font-bold tracking-normal text-slate-950">The Optimized Storage Pipeline</h1>
+                <p class="mt-2 max-w-2xl text-sm text-slate-600">A realistic archive architecture that uses adaptive preprocessing to increase redundancy before high-ratio entropy compression.</p>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-slate-600">
+                <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                <span>Local engine v3</span>
+            </div>
+        </header>
+
+        <section class="grid flex-1 gap-5 lg:grid-cols-[360px_1fr]">
+            <aside class="flex flex-col gap-4">
+                <div id="drop-zone" class="metric cursor-pointer p-5 transition hover:border-blue-500 hover:bg-blue-50">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-md bg-blue-700 text-white">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                        </svg>
+                    </div>
+                    <h2 class="mt-4 text-lg font-semibold">Upload binary</h2>
+                    <p class="mt-1 text-sm text-slate-600">Files are profiled so transformations can be selected by type, structure, and data class.</p>
+                    <div class="mt-4 rounded-md border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
+                        Drag file or folder here, or click to browse
+                    </div>
+                    <div class="mt-4 text-sm">
+                        <p class="font-semibold text-slate-700">Action</p>
+                        <label class="flex items-center gap-2 mt-2">
+                            <input type="radio" name="action" value="compress" checked>
+                            <span>Compress files/folders</span>
+                        </label>
+                        <label class="flex items-center gap-2 mt-2">
+                            <input type="radio" name="action" value="extract">
+                            <span>Extract .tos archive</span>
+                        </label>
+                    </div>
+                    <div id="mode-group" class="mt-4 text-sm">
+                        <p class="font-semibold text-slate-700">Compression mode</p>
+                        <label class="flex items-center gap-2 mt-2">
+                            <input type="radio" name="mode" value="best" checked>
+                            <span>Best compression for binaries</span>
+                        </label>
+                        <label class="flex items-center gap-2 mt-2">
+                            <input type="radio" name="mode" value="general">
+                            <span>General-purpose compatibility mode</span>
+                        </label>
+                        <label class="flex items-center gap-2 mt-2">
+                            <input type="radio" name="mode" value="big">
+                            <span>Big dataset streaming mode</span>
+                        </label>
+                    </div>
+                    <div class="mt-4 text-sm text-slate-500">
+                        <button id="select-button" class="rounded bg-blue-700 px-3 py-2 text-white hover:bg-blue-800">Select files or folder</button>
+                    </div>
+                    <input id="file-input" class="hidden" type="file" webkitdirectory directory multiple>
+                </div>
+
+                <div id="telemetry" class="metric hidden p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-700"></div>
+                        <p class="text-sm font-semibold text-slate-900">Pipeline</p>
+                    </div>
+                    <ol id="telemetry-list" class="mt-4 space-y-2 text-sm text-slate-600"></ol>
+                </div>
+
+                <div class="metric p-5">
+                    <h2 class="text-sm font-semibold uppercase text-slate-500">Processing Pipeline</h2>
+                    <div class="mt-4 space-y-3 text-xs">
+                        <div class="flex justify-between gap-4"><span>1. Adaptive transforms</span><span class="font-mono text-blue-700">Type aware</span></div>
+                        <div class="flex justify-between gap-4"><span>2. Structural optimization</span><span class="font-mono text-blue-700">Redundancy</span></div>
+                        <div class="flex justify-between gap-4"><span>3. Hybrid entropy engine</span><span class="font-mono text-blue-700">LZMA2</span></div>
+                        <div class="flex justify-between gap-4"><span>4. Archive container</span><span class="font-mono text-blue-700">.TOS</span></div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="flex flex-col gap-5">
+                <div id="empty-state" class="paper-card p-6">
+                    <div class="mx-auto max-w-4xl text-center">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-800">System Architecture</p>
+                        <h2 class="mt-2 text-2xl font-bold tracking-normal text-slate-950">TOS (The Optimized Storage Pipeline)</h2>
+                        <p class="mt-2 text-sm text-slate-600">Optimized archive with adaptive preprocessing and high-ratio compression.</p>
+                    </div>
+
+                    <div class="mt-6 flex flex-col items-center">
+                        <div class="flow-node px-5 py-3 text-center">
+                            <p class="text-sm font-semibold uppercase text-slate-500">Input File</p>
+                        </div>
+                        <div class="flow-arrow">&darr;</div>
+
+                        <article class="stage-node">
+                            <div class="stage-header px-5 py-3">
+                                <p class="text-xs font-semibold uppercase text-blue-800">Stage 1</p>
+                                <h3 class="text-lg font-bold text-slate-950">Adaptive Data Transformation</h3>
+                                <p class="mt-1 text-sm text-slate-600">Transforms are selected automatically according to file type.</p>
+                            </div>
+                            <div class="grid gap-3 p-4 sm:grid-cols-2">
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">MIME/File Type Detection</p>
+                                    <p class="mt-1 text-xs text-slate-500">Classify content before transform selection.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">BCJ Transform</p>
+                                    <p class="mt-1 text-xs text-slate-500">Normalize executable branch targets.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Delta Transform</p>
+                                    <p class="mt-1 text-xs text-slate-500">Prepare structured or binary sequences.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Static Dictionary Injection</p>
+                                    <p class="mt-1 text-xs text-slate-500">Seed known terms and format tokens.</p>
+                                </div>
+                            </div>
+                        </article>
+                        <div class="flow-arrow">&darr;</div>
+
+                        <article class="stage-node">
+                            <div class="stage-header px-5 py-3">
+                                <p class="text-xs font-semibold uppercase text-blue-800">Stage 2</p>
+                                <h3 class="text-lg font-bold text-slate-950">Intelligent Structural Optimization</h3>
+                                <p class="mt-1 text-sm text-slate-600">Preprocessing increases redundancy before Stage 3.</p>
+                            </div>
+                            <div class="grid gap-3 p-4 lg:grid-cols-3">
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Structural Pattern Analyzer</p>
+                                    <p class="mt-1 text-xs text-slate-500">Find repeated structures beyond exact byte matches.</p>
+                                </div>
+                                <div class="component p-3 lg:col-span-2">
+                                    <p class="text-sm font-semibold">Template Extraction Engine</p>
+                                    <p class="mt-1 text-xs text-slate-500">Convert recurring forms into reusable templates.</p>
+                                    <div class="mt-2 rounded border border-slate-200 bg-slate-50 p-2 font-mono text-[11px] leading-4 text-slate-600">
+                                        the {X} on the mat &nbsp; | &nbsp; X = cat, dog, fish
+                                    </div>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Adaptive Stream Organizer</p>
+                                    <p class="mt-1 text-xs text-slate-500">Cluster instructions, text, metadata, numbers, and binary sections.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Optional Deduplication</p>
+                                    <p class="mt-1 text-xs text-slate-500">Remove identical blocks only when beneficial.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Optional Multi-Stream Splitter</p>
+                                    <p class="mt-1 text-xs text-slate-500">Separate data classes when specialized streams help.</p>
+                                </div>
+                            </div>
+                        </article>
+                        <div class="flow-arrow">&darr;</div>
+
+                        <article class="stage-node">
+                            <div class="stage-header px-5 py-3">
+                                <p class="text-xs font-semibold uppercase text-blue-800">Stage 3</p>
+                                <h3 class="text-lg font-bold text-slate-950">Hybrid Entropy Compression Engine</h3>
+                                <p class="mt-1 text-sm text-slate-600">Entropy coding is integrated inside LZMA2.</p>
+                            </div>
+                            <div class="grid gap-3 p-4 sm:grid-cols-2">
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">LZMA2</p>
+                                    <p class="mt-1 text-xs text-slate-500">Default high-ratio compressor.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Optional Zstandard Mode</p>
+                                    <p class="mt-1 text-xs text-slate-500">Alternative speed-focused profile.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Large Dictionary Matching</p>
+                                    <p class="mt-1 text-xs text-slate-500">Capture long-range repeated sequences.</p>
+                                </div>
+                                <div class="component p-3">
+                                    <p class="text-sm font-semibold">Integrated Range Coding</p>
+                                    <p class="mt-1 text-xs text-slate-500">Handled by the LZMA2 coding pipeline.</p>
+                                </div>
+                            </div>
+                        </article>
+                        <div class="flow-arrow">&darr;</div>
+
+                        <div class="flow-node px-5 py-4 text-center">
+                            <p class="text-sm font-semibold uppercase text-slate-500">Compressed .TOS Archive</p>
+                            <p class="mt-1 text-sm text-slate-600">Optimized archive with adaptive preprocessing and high-ratio compression.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="results" class="hidden flex-col gap-5">
+                    <div class="grid gap-3 md:grid-cols-4">
+                        <div class="metric p-4">
+                            <p class="text-xs font-semibold uppercase text-slate-500">Original</p>
+                            <p id="metric-original" class="mt-2 text-2xl font-bold">-</p>
+                        </div>
+                        <div class="metric border-blue-700 p-4">
+                            <p class="text-xs font-semibold uppercase text-slate-500">TOS Archive</p>
+                            <p id="metric-compressed" class="mt-2 text-2xl font-bold text-blue-800">-</p>
+                            <p id="metric-ratio" class="mt-1 text-sm font-semibold text-emerald-700">-</p>
+                        </div>
+                        <div class="metric p-4">
+                            <p class="text-xs font-semibold uppercase text-slate-500">Runtime</p>
+                            <p id="metric-time" class="mt-2 text-2xl font-bold">-</p>
+                        </div>
+                        <div class="metric p-4">
+                            <p class="text-xs font-semibold uppercase text-slate-500">BCJ Patches</p>
+                            <p id="metric-patched" class="mt-2 text-2xl font-bold">-</p>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <div class="metric p-4">
+                            <p class="text-xs font-semibold uppercase text-slate-500">Algorithm</p>
+                            <p id="metric-algorithm" class="mt-2 text-xs font-mono text-slate-700">-</p>
+                        </div>
+                        <div class="metric p-4">
+                            <p class="text-xs font-semibold uppercase text-slate-500">Entropy Model</p>
+                            <p id="metric-entropy" class="mt-2 text-lg font-semibold">-</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 hidden" id="download-container">
+                        <a id="download-link" class="inline-flex rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"></a>
+                    </div>
+
+                    <div class="metric overflow-hidden">
+                        <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                            <div>
+                                <h2 class="font-semibold">BCJ Normalization</h2>
+                                <p class="text-sm text-slate-500">Before/after adaptive filtering visualization.</p>
+                            </div>
+                            <div class="flex rounded-md border border-slate-300 bg-white p-1">
+                                <button id="view-split" class="rounded px-3 py-1 text-sm font-semibold text-blue-800">Split</button>
+                                <button id="view-after" class="rounded px-3 py-1 text-sm font-semibold text-slate-500">After</button>
+                            </div>
+                        </div>
+                        <div id="hex-split" class="grid gap-0 md:grid-cols-2">
+                            <div class="border-b border-slate-200 p-4 md:border-b-0 md:border-r">
+                                <p class="mb-3 text-xs font-semibold uppercase text-rose-700">Before</p>
+                                <div id="hex-before" class="flex flex-wrap gap-1"></div>
+                            </div>
+                            <div class="p-4">
+                                <p class="mb-3 text-xs font-semibold uppercase text-emerald-700">After</p>
+                                <div id="hex-after" class="flex flex-wrap gap-1"></div>
+                            </div>
+                        </div>
+                        <div id="hex-after-only" class="hidden p-4">
+                            <div id="hex-after-single" class="flex flex-wrap gap-1"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+        const actionInputs = document.querySelectorAll('input[name="action"]');
+        const modeGroup = document.getElementById("mode-group");
+        const downloadContainer = document.getElementById("download-container");
+        const downloadLink = document.getElementById("download-link");
+        const telemetry = document.getElementById("telemetry");
+        const telemetryList = document.getElementById("telemetry-list");
+        const emptyState = document.getElementById("empty-state");
+        const results = document.getElementById("results");
+        const hexSplit = document.getElementById("hex-split");
+        const hexAfterOnly = document.getElementById("hex-after-only");
+
+        let beforeBytes = [];
+        let afterBytes = [];
+
+        const stages = [
+            "Detecting MIME/file type",
+            "Selecting adaptive transforms",
+            "Analyzing structural patterns",
+            "Organizing similar data streams",
+            "Preparing optional deduplication or stream split",
+            "Running Hybrid Entropy Compression Engine",
+            "Finalizing compressed .TOS archive"
+        ];
+
+        const selectButton = document.getElementById("select-button");
+
+        function updateActionUI() {
+            const action = document.querySelector('input[name="action"]:checked').value;
+            if (action === "extract") {
+                modeGroup.classList.add("hidden");
+                downloadContainer.classList.add("hidden");
+                dropZone.querySelector("h2").innerText = "Upload .tos archive for extraction";
+            } else {
+                modeGroup.classList.remove("hidden");
+                downloadContainer.classList.add("hidden");
+                dropZone.querySelector("h2").innerText = "Upload file or folder to compress";
+            }
+        }
+
+        actionInputs.forEach(input => input.addEventListener("change", updateActionUI));
+        updateActionUI();
+
+        dropZone.addEventListener("click", () => fileInput.click());
+        selectButton.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", event => {
+            const files = event.target.files;
+            if (files.length) processFiles(files);
+        });
+        dropZone.addEventListener("dragover", event => {
+            event.preventDefault();
+            dropZone.classList.add("border-blue-500", "bg-blue-50");
+        });
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("border-blue-500", "bg-blue-50");
+        });
+        dropZone.addEventListener("drop", event => {
+            event.preventDefault();
+            dropZone.classList.remove("border-blue-500", "bg-blue-50");
+            const files = event.dataTransfer.files;
+            if (files.length) processFiles(files);
+        });
+
+        async function processFiles(files) {
+            telemetry.classList.remove("hidden");
+            results.classList.add("hidden");
+            emptyState.classList.add("hidden");
+            telemetryList.innerHTML = "";
+            downloadContainer.classList.add("hidden");
+
+            const action = document.querySelector('input[name="action"]:checked').value;
+            const formData = new FormData();
+            formData.append("action", action);
+            const telemetryTask = playTelemetry();
+
+            // Show file count in telemetry
+            const fileCountItem = document.createElement("li");
+            fileCountItem.className = "flex items-center gap-2 font-semibold";
+            fileCountItem.innerHTML = `<span class="h-2 w-2 rounded-full bg-blue-700"></span><span>Uploading ${files.length} file${files.length !== 1 ? "s" : ""}...</span>`;
+            telemetryList.appendChild(fileCountItem);
+
+            if (action === "extract") {
+                if (files.length !== 1) {
+                    alert("Please upload exactly one .tos archive to extract.");
+                    telemetry.classList.add("hidden");
+                    emptyState.classList.remove("hidden");
+                    return;
+                }
+                const file = files[0];
+                formData.append("file", file, file.name);
+            } else {
+                const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+                formData.append("mode", selectedMode);
+
+                for (const file of files) {
+                    const name = file.webkitRelativePath || file.name;
+                    formData.append("file", file, name);
+                }
+            }
+
+            try {
+                if (window.location.protocol === "file:") {
+                    throw new Error("Start the Flask server and open http://127.0.0.1:5000. This page cannot upload files when opened directly from disk.");
+                }
+
+                // Keep local big-dataset jobs alive while the server compresses.
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3600000); // 60 minutes
+
+                let response;
+                try {
+                    response = await fetch("/process", {
+                        method: "POST",
+                        body: formData,
+                        signal: controller.signal
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+                await telemetryTask;
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || "Compression failed");
+                }
+
+                if (action === "extract") {
+                    const blob = await response.blob();
+                    const header = response.headers.get("Content-Disposition") || "";
+                    const match = /filename="?([^";]+)"?/.exec(header);
+                    const downloadName = match ? match[1] : "extracted.zip";
+                    const objectUrl = URL.createObjectURL(blob);
+
+                    downloadLink.href = objectUrl;
+                    downloadLink.download = downloadName;
+                    downloadLink.textContent = `Download ${downloadName}`;
+                    downloadContainer.classList.remove("hidden");
+                    emptyState.classList.add("hidden");
+                    telemetry.classList.add("hidden");
+
+                    renderExtractionResult(downloadName, files[0].name);
+                    return;
+                }
+
+                const blob = await response.blob();
+                const header = response.headers.get("Content-Disposition") || "";
+                const match = /filename="?([^";]+)"?/.exec(header);
+                const downloadName = match ? match[1] : "archive.tos";
+                const objectUrl = URL.createObjectURL(blob);
+
+                downloadLink.href = objectUrl;
+                downloadLink.download = downloadName;
+                downloadLink.textContent = `Download ${downloadName}`;
+                downloadContainer.classList.remove("hidden");
+                emptyState.classList.add("hidden");
+
+                const data = {
+                    original_size: response.headers.get("X-TOS-Original-Size") || "Unknown",
+                    compressed_size: response.headers.get("X-TOS-Compressed-Size") || formatBytes(blob.size),
+                    compression_ratio: response.headers.get("X-TOS-Ratio") || "Unknown",
+                    time_ms: response.headers.get("X-TOS-Time-Ms") || "Unknown",
+                    bcj_patched: response.headers.get("X-TOS-BCJ-Patched") || "0",
+                    entropy: response.headers.get("X-TOS-Entropy") || "0",
+                    algorithm: response.headers.get("X-TOS-Algorithm") || "TOS3 archive",
+                    before_hex: response.headers.get("X-TOS-Before-Hex") || "",
+                    after_hex: response.headers.get("X-TOS-After-Hex") || "",
+                };
+                renderResults(data);
+            } catch (error) {
+                if (error.name === "AbortError") {
+                    alert("Compression is still taking too long for this browser request. Try Big dataset streaming mode or run the CLI benchmark for this folder.");
+                } else if (error instanceof TypeError && error.message === "Failed to fetch") {
+                    alert("Failed to reach the Flask server. Start app_enhanced.py and open http://127.0.0.1:5000, then try again.");
+                } else {
+                    alert(error.message);
+                }
+                telemetry.classList.add("hidden");
+                emptyState.classList.remove("hidden");
+            }
+        }
+
+        function formatBytes(value) {
+            const units = ["B", "KB", "MB", "GB", "TB"];
+            let size = Number(value);
+            let unit = 0;
+            while (size >= 1024 && unit < units.length - 1) {
+                size /= 1024;
+                unit += 1;
+            }
+            return `${size.toFixed(unit === 0 ? 0 : 2)} ${units[unit]}`;
+        }
+
+        function renderExtractionResult(downloadName, archiveName) {
+            document.getElementById("metric-original").innerText = archiveName;
+            document.getElementById("metric-compressed").innerText = "Extracted zip";
+            document.getElementById("metric-ratio").innerText = `File extracted to ${downloadName}`;
+            document.getElementById("metric-time").innerText = "-";
+            document.getElementById("metric-patched").innerText = "-";
+            document.getElementById("metric-entropy").innerText = "-";
+            document.getElementById("metric-algorithm").innerText = "Extraction";
+
+            beforeBytes = [];
+            afterBytes = [];
+            document.getElementById("hex-before").innerHTML = "";
+            document.getElementById("hex-after").innerHTML = "";
+            document.getElementById("hex-after-single").innerHTML = "";
+
+            results.classList.remove("hidden");
+            results.classList.add("flex");
+            showSplit();
+        }
+
+        async function playTelemetry() {
+            for (const stage of stages) {
+                const item = document.createElement("li");
+                item.className = "flex items-center gap-2";
+                item.innerHTML = `<span class="h-2 w-2 rounded-full bg-blue-700"></span><span>${stage}</span>`;
+                telemetryList.appendChild(item);
+                await new Promise(resolve => setTimeout(resolve, 350));
+            }
+        }
+
+        function renderResults(data) {
+            document.getElementById("metric-original").innerText = data.original_size;
+            document.getElementById("metric-compressed").innerText = data.compressed_size;
+            document.getElementById("metric-ratio").innerText = `${data.compression_ratio} reduction`;
+            document.getElementById("metric-time").innerText = `${data.time_ms} ms`;
+            document.getElementById("metric-patched").innerText = data.bcj_patched;
+            document.getElementById("metric-entropy").innerText = `${data.entropy} bits/byte`;
+            document.getElementById("metric-algorithm").innerText = data.algorithm;
+
+            beforeBytes = data.before_hex ? data.before_hex.split(" ") : [];
+            afterBytes = data.after_hex ? data.after_hex.split(" ") : [];
+
+            renderHexGrid("hex-before", beforeBytes, "before");
+            renderHexGrid("hex-after", afterBytes, "after");
+            renderHexGrid("hex-after-single", afterBytes, "after");
+
+            telemetry.classList.add("hidden");
+            results.classList.remove("hidden");
+            results.classList.add("flex");
+            showSplit();
+        }
+
+        function renderHexGrid(targetId, bytes, mode) {
+            const target = document.getElementById(targetId);
+            target.innerHTML = "";
+            bytes.forEach((byte, index) => {
+                const span = document.createElement("span");
+                const changed = beforeBytes[index] !== afterBytes[index];
+                span.className = `byte ${changed ? (mode === "before" ? "changed-before" : "changed-after") : ""}`;
+                span.innerText = byte;
+                target.appendChild(span);
+            });
+        }
+
+        function showSplit() {
+            hexSplit.classList.remove("hidden");
+            hexAfterOnly.classList.add("hidden");
+            document.getElementById("view-split").className = "rounded bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-800";
+            document.getElementById("view-after").className = "rounded px-3 py-1 text-sm font-semibold text-slate-500";
+        }
+
+        function showAfter() {
+            hexSplit.classList.add("hidden");
+            hexAfterOnly.classList.remove("hidden");
+            document.getElementById("view-after").className = "rounded bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-800";
+            document.getElementById("view-split").className = "rounded px-3 py-1 text-sm font-semibold text-slate-500";
+        }
+
+        document.getElementById("view-split").addEventListener("click", showSplit);
+        document.getElementById("view-after").addEventListener("click", showAfter);
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "enable_json_key_order": true,
+  "enable_xml_normalization": true,
+  "enable_csv_componentization": true,
+  "enable_bcj": true,
+  "enable_delta": true,
+  "skip_already_compressed": true,
+  "min_lzma_gain": 1,
+  "trial_sample_size": 65536
+}
